@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <title>Servers</title>
+  <link rel="stylesheet" href="/public/css/izi-toast.css">
+
+  <script src="/public/js/axios.js"></script>
+  <script src="/public/js/izi-toast.js"></script>
+</head>
+
+<body>
+  <h3>Add RPN Server</h3>
+  <form style="display: none;" id="admin-form">
+    <label for="server-ip">Server IP</label><br>
+    <input type="text" name="server-ip" id="server-ip" required>
+    <br><br>
+
+    <label for="server-name">Server Nick Name</label><br>
+    <input type="text" name="server-name" id="server-name" required>
+    <br><br>
+
+    <label for="api-endpoint">API Endpoint</label><br>
+    <input type="text" name="api-endpoint" id="api-endpoint" required>
+    <br><br>
+
+    <label for="api-key">API Security Key</label><br>
+    <textarea rows="8" cols="60" name="api-key" id="api-key" required></textarea>
+    <br><br>
+
+    <label for="server-region">Region</label><br>
+    <select name="server-region" id="server-region" ></select>
+    <br><br>
+
+    <input id="make-it" type="submit" value="Submit">
+  </form>
+
+  <br><br>
+  <h3>Server List</h3>
+  <ul id="server-list"></ul>
+
+  <br><br>
+  <div id="messages">Loading...</div>
+
+  <script>
+    const jwt = localStorage.getItem('jwt');
+
+    function deleteServer(serverId, serverName) {
+      iziToast.question({
+        timeout: 20000,
+        close: false,
+        overlayClose: true,
+        overlay: true,
+        displayMode: 'once',
+        id: 'question',
+        zindex: 99999,
+        title: `Delete <b>${serverName}</b>?`,
+        position: 'center',
+        buttons: [
+          [`<button><b>Delete</b></button>`, (instance, toast) => {
+            instance.hide({ transitionOut: 'fadeOut' }, toast, 'button');
+            axios({
+              method: 'POST',
+              url: '/admin/servers/delete',
+              headers: { 'x-access-token': jwt },
+              data: { serverId: serverId }
+            })
+            .then(response => {
+              // remove from list
+              const select = document.querySelector(`[data-server='${serverId}']`).remove();
+              iziToast.success({
+                title: 'Removed Server',
+                position: 'topCenter',
+                timeout: 3500
+              });
+            })
+            .catch(error => {
+              console.log(error)
+              iziToast.error({
+                title: 'Failed to delete server',
+                position: 'topCenter',
+                timeout: 3500
+              });
+              document.getElementById("messages").innerHTML = ' Error: Failed to delete server';
+            });
+          }, true],
+          ['<button>Go Back</button>', (instance, toast) => {
+            instance.hide({ transitionOut: 'fadeOut' }, toast, 'button');
+          }],
+        ]
+      });
+    }
+
+    axios({
+      method: 'GET',
+      url: '/admin/status/all',
+      headers: { 'x-access-token': jwt }
+    })
+    .then(response => {
+      let regionOptions = '';
+      Object.entries(response.data.serverRegions).forEach(([key, element]) => {
+        regionOptions += `<option value="${element.server_region_id}">${element.region_name}</option>`;
+      });
+
+      let serverList = '';
+      console.log(response.data.servers)
+      Object.entries(response.data.servers).forEach(([key, element]) => {
+        serverList += 
+          `<li data-server="${element.server_id}">
+            ${element.server_name} (${element.ip}) [<a href="/public/admin-server-manager.html?server-id=${element.server_id}">Server Panel</a>][<a href="javascript:deleteServer('${element.server_id}', '${element.server_name}')">X</a>]
+          </li>`;
+      });
+
+      console.log(serverList);
+
+      document.getElementById("server-region").innerHTML = regionOptions;
+
+      document.getElementById("server-list").innerHTML = serverList;
+      document.getElementById("messages").innerHTML = '';
+      document.getElementById('admin-form').style.display = null;
+    })
+    .catch(error => {
+      console.log(error)
+      document.getElementById("messages").innerHTML = '<p>ADMIN ACCESS DENIED</p><br><a href="/public/login.html">Go to login page</a>';
+    });
+
+    document.getElementById("admin-form").addEventListener("submit", function(event){
+      event.preventDefault();
+      document.getElementById("messages").innerHTML = "";
+      document.getElementById("make-it").disabled = true;
+      document.getElementById("make-it").value = 'Pending...';
+      
+      const serverIp = document.getElementById("server-ip").value;
+      const regionKey = document.getElementById("server-region").value;
+      const apiKey =  document.getElementById("api-key").value;
+      const apiEndpoint = document.getElementById("api-endpoint").value;
+      const serverName = document.getElementById("server-name").value;
+
+      axios({
+        method: 'POST',
+        url: '/admin/servers/add',
+        headers: { 'x-access-token': jwt },
+        data: {
+          ip: serverIp,
+          regionKey: regionKey,
+          apiEndpoint: apiEndpoint,
+          apiKey: apiKey,
+          serverName: serverName
+        }
+      })
+      .then(response => {
+        document.getElementById("make-it").disabled = false;
+        document.getElementById("make-it").value = 'Submit';
+        document.getElementById("messages").innerHTML = 'Server Added';
+        // Append the text to <li>
+        document.getElementById("server-list").innerHTML += `<li data-server="${response.data.server_id}">${serverName} (${serverIp}) [<a href="/public/admin-server-manager.html?server-id=${response.data.server_id}">Server Panel</a>][<a href="javascript:deleteServer('${response.data.server_id}', '${serverName}')">X</a>]</li>`;
+
+        document.getElementById("admin-form").reset();
+      })
+      .catch(error => {
+        console.log(error)
+        document.getElementById("make-it").disabled = false;
+        document.getElementById("make-it").value = 'Submit';
+        let errText = 'unknown error';
+        if (error.response.data.error) {
+          errText = error.response.data.error;
+        }
+        document.getElementById("messages").innerHTML = ' Error: ' + errText;
+      });
+    }, true);
+  </script>
+</body>

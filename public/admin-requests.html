@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <title>Requests</title>
+  <link rel="stylesheet" href="/public/css/izi-toast.css">
+
+  <script src="/public/js/axios.js"></script>
+  <script src="/public/js/izi-toast.js"></script>
+</head>
+
+<body>
+  <h3>Request List</h3>
+
+  <br><br>
+  <ul id="request-list"></ul>
+
+  <br><br>
+  <div id="messages">Loading...</div>
+
+  <script>
+    const jwt = localStorage.getItem('jwt');
+
+    axios({
+      method: 'GET',
+      url: '/admin/requests/get',
+      headers: { 'x-access-token': jwt }
+    })
+    .then(response => {
+      let responseList = '';
+      response.data.forEach(element => {
+        responseList += `<li>${element.email}</li>`;
+      });
+
+      document.getElementById("request-list").innerHTML = responseList;
+      document.getElementById("messages").innerHTML = '';
+    })
+    .catch(error => {
+      document.getElementById("messages").innerHTML = '<p>ADMIN ACCESS DENIED</p><br><a href="/public/login.html">Go to login page</a>';
+    });
+  </script>
+</body>

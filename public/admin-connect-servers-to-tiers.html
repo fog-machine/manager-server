@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <title>Connect Servers To Tiers</title>
+  <link rel="stylesheet" href="/public/css/izi-toast.css">
+
+  <script src="/public/js/axios.js"></script>
+  <script src="/public/js/izi-toast.js"></script>
+</head>
+
+<body>
+  <h3>Connect Servers To Tiers</h3>
+  <p>Tier to server connections control which servers a user can select join subscribing, upgrading tiers, or switching regions.  A tier is not ready for registration unless it has both a domain and a server connected to it.  Users will keep their current servers even if you remove this connection</p>
+
+  <form style="display: none;" id="admin-form">
+    <label for="tier-select">Tier</label><br>
+    <select id="tier-select"></select>
+    <br>
+    <pre>▲<br>|<br>▼</pre>
+
+    <label for="server-select">Server</label><br>
+    <select id="server-select"></select>
+    <br><br>
+
+    <input id="make-it" type="submit" value="Create Connection">
+  </form>
+
+  <br><br>
+  <h3>Connections (tier ◄---► server)</h3>
+  <ul id="connection-list"></ul>
+
+  <br><br>
+  <div id="messages">Loading...</div>
+
+  <script>
+    const jwt = localStorage.getItem('jwt');
+    let stateObj;
+
+    function deleteConnection(tierId, serverId) {
+      iziToast.question({
+        timeout: 20000,
+        close: false,
+        overlayClose: true,
+        overlay: true,
+        displayMode: 'once',
+        id: 'question',
+        zindex: 99999,
+        title: `Delete <b>${stateObj.servers[serverId].server_name}◄---►${stateObj.tiers[tierId].name}</b>?`,
+        position: 'center',
+        buttons: [
+          ['<button><b>Delete</b></button>', (instance, toast) => {
+            instance.hide({ transitionOut: 'fadeOut' }, toast, 'button');
+            axios({
+              method: 'POST',
+              url: '/admin/servers-tiers/disconnect',
+              headers: { 'x-access-token': jwt },
+              data: {
+                serverId: serverId,
+                tierId: tierId
+              }
+            })
+            .then(response => {
+              // remove from list
+              const select = document.querySelector(`[data-tier='${tierId}']`).remove();
+              iziToast.success({
+                title: 'Removed Connection',
+                position: 'topCenter',
+                timeout: 3500
+              });
+            })
+            .catch(error => {
+              console.log(error);
+              iziToast.error({
+                title: 'Failed to delete connection',
+                position: 'topCenter',
+                timeout: 3500
+              });
+              document.getElementById("messages").innerHTML = ' Error: Failed to delete connection';
+            });
+          }, true],
+          ['<button>Go Back</button>', (instance, toast) => {
+            instance.hide({ transitionOut: 'fadeOut' }, toast, 'button');
+          }],
+        ]
+      });
+    }
+
+    axios({
+      method: 'GET',
+      url: '/admin/status/all',
+      headers: { 'x-access-token': jwt }
+    })
+    .then(response => {
+      stateObj = response.data;
+
+      let connectionList = '';
+      let selectListServers = '';
+      let selectListTiers = '';
+
+      Object.entries(response.data.servers).forEach(([key, element]) => {
+        selectListServers += `<option value="${element.server_id}">${element.server_name}</option>`;
+      });
+
+      Object.entries(response.data.tiers).forEach(([key, element]) => {
+        selectListTiers += `<option value="${element.account_tier_id}">${element.name}</option>`;
+        element.server_keys.forEach(element2 => {
+          connectionList += `<li data-tier="${element.account_tier_id}">${element.name} ◄---► ${stateObj.servers[element2].server_name} [<a href="javascript:deleteConnection('${element.account_tier_id}', '${element2}')">X</a>]</li>`;
+        });
+      });
+
+      document.getElementById("connection-list").innerHTML = connectionList;
+      document.getElementById("server-select").innerHTML = selectListServers;
+      document.getElementById("tier-select").innerHTML = selectListTiers;
+
+      document.getElementById("messages").innerHTML = '';
+      document.getElementById('admin-form').style.display = null;
+    })
+    .catch(error => {
+      console.log(error);
+      document.getElementById("messages").innerHTML = '<p>ADMIN ACCESS DENIED</p><br><a href="/public/login.html">Go to login page</a>';
+    });
+
+    document.getElementById("admin-form").addEventListener("submit", function(event){
+      event.preventDefault();
+      document.getElementById("messages").innerHTML = "";
+      document.getElementById("make-it").disabled = true;
+      document.getElementById("make-it").value = 'Pending...';
+      
+      const serverId = document.getElementById("server-select").value;
+      const tierId = document.getElementById("tier-select").value;
+
+      axios({
+        method: 'POST',
+        url: '/admin/servers-tiers/connect',
+        headers: { 'x-access-token': jwt },
+        data: {
+          serverId: serverId,
+          tierId: tierId
+        }
+      })
+      .then(response => {
+        document.getElementById("make-it").disabled = false;
+        document.getElementById("make-it").value = 'Create Connection';
+        // Append the text to <li>
+        document.getElementById("connection-list").innerHTML += `<li data-tier="${tierId}">${stateObj.tiers[tierId].name} ◄---► ${stateObj.servers[serverId].server_name} [<a href="javascript:deleteConnection('${tierId}', '${serverId}')">X</a>]</li>`;
+
+        document.getElementById("admin-form").reset();
+      })
+      .catch(error => {
+        console.log(error);
+        document.getElementById("make-it").disabled = false;
+        document.getElementById("make-it").value = 'Create Connection';
+        let errText = 'unknown error';
+        if (error.response && error.response.data.error) {
+          errText = error.response.data.error;
+        }
+        document.getElementById("messages").innerHTML = ' Error: ' + errText;
+      });
+    }, true);
+  </script>
+</body>

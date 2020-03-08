@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <title>Domain Management</title>
+  <link rel="stylesheet" href="/public/css/izi-toast.css">
+
+  <script src="/public/js/axios.js"></script>
+  <script src="/public/js/izi-toast.js"></script>
+</head>
+
+<body>
+  <h3>Add Domain</h3>
+  <form style="display: none;" id="admin-form">
+    <label for="domain">Domain (ex: fogmachine.io)</label><br>
+    <input type="text" name="domain" id="domain" required>
+    <br><br>
+
+    <label for="restricted-subdomains">Restricted Subdomains (comma separated)</label><br>
+    <input type="text" name="restricted-subdomains" id="restricted-subdomains" value="www, api">
+    <br><br>
+
+    <label for="restricted-subdomain-prefix">Restricted Subdomain Prefix</label><br>
+    <input type="text" name="restricted-subdomain-prefix" id="restricted-subdomain-prefix" value="api-">
+    <br><br>
+
+    <input id="make-it" type="submit" value="Submit">
+  </form>
+
+  <br><br>
+  <ul id="domain-list"></ul>
+
+  <br><br>
+  <div id="messages">Loading...</div>
+
+  <script>
+    const jwt = localStorage.getItem('jwt');
+
+    function deleteDomain(domainId, domainName) {
+      iziToast.question({
+        timeout: 20000,
+        close: false,
+        overlayClose: true,
+        overlay: true,
+        displayMode: 'once',
+        id: 'question',
+        zindex: 99999,
+        title: "Delete <b>'" + domainName + "'</b>?",
+        position: 'center',
+        buttons: [
+          ['<button><b>Delete</b></button>', (instance, toast) => {
+            instance.hide({ transitionOut: 'fadeOut' }, toast, 'button');
+            axios({
+              method: 'POST',
+              url: '/admin/domains/delete',
+              headers: { 'x-access-token': jwt },
+              data: { domainId: domainId }
+            })
+            .then(response => {
+              // remove from list
+              const select = document.querySelector(`[data-domain='${domainId}']`).remove();
+              iziToast.success({
+                title: 'Removed domain',
+                position: 'topCenter',
+                timeout: 3500
+              });
+            })
+            .catch(error => {
+              console.log(error);
+              iziToast.error({
+                title: 'Failed to delete domain',
+                position: 'topCenter',
+                timeout: 3500
+              });
+              document.getElementById("messages").innerHTML = ' Error: Failed to delete domain';
+            });
+          }, true],
+          ['<button>Go Back</button>', (instance, toast) => {
+            instance.hide({ transitionOut: 'fadeOut' }, toast, 'button');
+          }],
+        ]
+      });
+    }
+
+    axios({
+      method: 'GET',
+      url: '/admin/status/domains',
+      headers: { 'x-access-token': jwt }
+    })
+    .then(response => {
+      let responseList = '';
+      response.data.forEach(element => {
+        responseList += `<li data-domain="${element.domain_id}">${element.domain} [<a href="javascript:deleteDomain('${element.domain_id}', '${element.domain}')">X</a>]</li>`;
+      });
+
+      document.getElementById("domain-list").innerHTML = responseList;
+      document.getElementById("messages").innerHTML = '';
+      document.getElementById('admin-form').style.display = null;
+    })
+    .catch(error => {
+      document.getElementById("messages").innerHTML = '<p>ADMIN ACCESS DENIED</p><br><a href="/public/login.html">Go to login page</a>';
+    });
+
+    document.getElementById("admin-form").addEventListener("submit", function(event){
+      event.preventDefault();
+      document.getElementById("messages").innerHTML = "";
+      document.getElementById("make-it").disabled = true;
+      document.getElementById("make-it").value = 'Pending...';
+      
+      const domain = document.getElementById("domain").value;
+      const restrictedSubdomains = document.getElementById("restricted-subdomains").value.split(',');
+      restrictedSubdomains.forEach(function(part, index, theArray) {
+        theArray[index] = part.trim();
+      });
+      const restrictedSubdomainPrefix = document.getElementById("restricted-subdomain-prefix").value;
+
+      axios({
+        method: 'POST',
+        url: '/admin/domains/add',
+        headers: { 'x-access-token': jwt },
+        data: {
+          domain: domain,
+          restrictedSubdomains: restrictedSubdomains,
+          restrictedSubdomainPrefix: restrictedSubdomainPrefix
+        }
+      })
+      .then(response => {
+        document.getElementById("make-it").disabled = false;
+        document.getElementById("make-it").value = 'Submit';
+        document.getElementById("messages").innerHTML = 'Domain Added';
+        // Append the text to <li>
+        document.getElementById("domain-list").innerHTML += `<li data-domain="${response.data.domain_id}">${domain} [<a href="javascript:deleteDomain('${response.data.domain_id}', '${domain}')">X</a>]</li>`;
+
+        document.getElementById("admin-form").reset();
+      })
+      .catch(error => {
+        console.log(error);
+        document.getElementById("make-it").disabled = false;
+        document.getElementById("make-it").value = 'Submit';
+        let errText = 'unknown error';
+        if (error.response && error.response.data.error) {
+          errText = error.response.data.error;
+        }
+        document.getElementById("messages").innerHTML = ' Error: ' + errText;
+      });
+    }, true);
+  </script>
+</body>

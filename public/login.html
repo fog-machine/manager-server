@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <title>Login</title>
+  <script src="/public/js/axios.js"></script>
+</head>
+
+<body>
+  <h3>Login</h3>
+
+  <form id="login" style="display: none;">
+    <label for="email">e-mail</label><br>
+    <input type="email" name="email" id="email" required>
+    <br><br>
+
+    <label for="password">Password</label><br>
+    <input type="password" name="password" id="password" required>
+    <br><br>
+
+    <input id="make-it" type="submit" value="Login">
+  </form>
+
+  <div id="messages">Loading...</div>
+
+  <script>
+    var jwt = localStorage.getItem('jwt');
+    if (jwt) {
+      axios({
+        method: 'GET',
+        url: '/account/info',
+        headers: {'x-access-token': jwt}
+      })
+      .then(response => {
+        window.location.href = '/public/user.html';
+      })
+      .catch(error => {
+        document.getElementById('login').style.display = null;
+        document.getElementById("messages").innerHTML = '';
+      });
+    } else {
+      document.getElementById('login').style.display = null;
+      document.getElementById("messages").innerHTML = '';
+    }
+
+    document.getElementById("login").addEventListener("submit", function(event){
+      event.preventDefault();
+      document.getElementById("messages").innerHTML = "";
+      document.getElementById("make-it").disabled = true;
+      document.getElementById("make-it").value = 'Pending...';
+      
+      axios({
+        method: 'POST',
+        url: '/login',
+        data: {
+          email: document.getElementById("email").value,
+          password: document.getElementById("password").value
+        }
+      })
+      .then(response => {
+        localStorage.setItem('jwt', response.data.token);
+        window.location.href = '/public/user.html';
+      })
+      .catch(error => {
+        document.getElementById("make-it").disabled = false;
+        document.getElementById("make-it").value = 'Submit';
+        document.getElementById("messages").innerHTML = error.response.data.error;
+      });
+    }, true);
+  </script>
+</body>

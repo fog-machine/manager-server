@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <title>Hacked Signup</title>
+</head>
+
+<body>
+  <h3>Dev Sign Up New User</h3>
+
+  <form id="hacked-signup">
+    <label for="email">E-mail</label><br>
+    <input type="email" name="email" id="email" required>
+    <br><br>
+    
+    <label for="password">Password</label><br>
+    <input type="password" name="password" id="password">
+    <br><br>
+
+    <label for="code">Authorization Code</label><br>
+    <input type="password" name="code" id="code">
+    <br><br>
+
+    <input id="make-it" type="submit" value="Submit">
+  </form>
+
+  <div id="messages"></div>
+
+  <script>
+    document.getElementById("hacked-signup").addEventListener("submit", function(event){
+      // Ajax request
+      event.preventDefault();
+      document.getElementById("messages").innerHTML = "";
+      document.getElementById("make-it").disabled = true;
+      document.getElementById("make-it").value = 'Pending...';
+
+      fetch('/admin/add-user', {
+        method: 'POST',
+        body: JSON.stringify({
+          email: document.getElementById("email").value,
+          password: document.getElementById("password").value,
+          'x-admin-pass': document.getElementById("code").value
+        }),
+        headers:{
+          'Content-Type': 'application/json'
+        }
+      }).then(res => {
+        if (!res.ok) {
+          throw Error(res.statusText);
+        }
+        return res.json();
+      })
+      .then(response => {
+        document.getElementById("make-it").value = 'Account Created!';
+        document.getElementById("messages").innerHTML = "Account Created!";
+      })
+      .catch(error => {
+        document.getElementById("make-it").disabled = false;
+        document.getElementById("make-it").value = 'Submit';
+        document.getElementById("messages").innerHTML = "Failed to create account";
+      });
+    }, true);
+  </script>
+</body>

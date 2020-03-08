@@ -1,0 +1,18 @@
+{
+    "secret": "YOUR_KEY",
+    "port": 2022,
+    "dynu": {
+        "clientId": "a",
+        "secret": "b",
+        "apiKey": "c",
+        "password": "d"
+    },
+    "email": {
+        "host": "127.0.0.1",
+        "port": 1025,
+        "user": "n",
+        "from": "n",
+        "password": "n",
+        "passwordResetUrl": "https://YOUR-DOMAIN.com/password-reset?token=__TOKEN__"
+    }
+}

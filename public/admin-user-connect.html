@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <title>Add Connection</title>
+  <link rel="stylesheet" href="/public/css/izi-toast.css">
+
+  <script src="/public/js/axios.js"></script>
+  <script src="/public/js/izi-toast.js"></script>
+</head>
+
+<body>
+  <h3>Add User Connection</h3>
+  <form style="display: none;" id="admin-form">
+    <label for="user-email">User e-mail</label><br>
+    <input type="text" name="user-email" id="user-email" required>
+    <br><br>
+
+    <label for="user-tier">Tier</label><br>
+    <select onchange="updateStuff()" name="user-tier" id="user-tier" required></select>
+    <br><br>
+
+    <label for="tier-price">Price (integer: $5 = 500)</label><br>
+    <input readonly value="0" type="number" name="tier-price" id="tier-price" min="0" step="1" required>
+    <br><br>
+
+    <label for="domain-select">Domain</label><br>
+    <select onchange="updateStuff2()" name="domain-select" id="domain-select" required></select>
+    <br><br>
+
+    <label for="user-subdomain">Sub Domain</label><br>
+    <input type="text" name="user-subdomain" id="user-subdomain" required>
+    <br><br>
+
+    <label for="user-server">Server</label><br>
+    <select name="user-server" id="user-server" required></select>
+    <br><br>
+
+    <input id="make-it" type="submit" value="Submit">
+  </form>
+
+  <br><br>
+  <div id="messages">Loading...</div>
+
+  <script>
+    const jwt = localStorage.getItem('jwt');
+    let stateObj;
+
+    const urlParams = new URLSearchParams(window.location.search);
+    // get the required parameter
+    const param = urlParams.get('email');
+    if (param) {
+      document.getElementById("user-email").value = param;
+    }
+
+    function updateStuff() {
+      let domainList = '';
+      console.log(document.getElementById('user-tier').value);
+      Object.entries(stateObj.domains).forEach(([key, element]) => {
+        console.log(element.tier_keys)
+        if (element.tier_keys.indexOf(parseInt(document.getElementById('user-tier').value)) > -1) {
+          domainList += `<option value="${element.domain_id}">${element.domain}</option>`;
+        }
+      });
+      if (domainList.length === 0) {
+        // warn user
+        iziToast.error({
+          title: 'No domains found for tier',
+          position: 'topCenter',
+          timeout: 3500
+        });
+      }
+      document.getElementById("domain-select").innerHTML = domainList;
+    
+      updateStuff2();
+    }
+
+    function updateStuff2() {
+      let serverList = '';
+      Object.entries(stateObj.servers).forEach(([key, element]) => {
+        if (
+          element.tier_keys.indexOf(parseInt(document.getElementById('user-tier').value)) > -1
+          && element.domain_keys.indexOf(parseInt(document.getElementById('domain-select').value) > -1)
+        ) {
+          serverList += `<option value="${element.server_id}">${element.server_name}</option>`;
+        }
+      });
+
+      if (serverList.length === 0) {
+        // warn user
+        iziToast.error({
+          title: 'No servers found for tier / domain',
+          position: 'topCenter',
+          timeout: 3500
+        });
+      }
+
+      document.getElementById("user-server").innerHTML = serverList;
+    }
+
+    axios({
+      method: 'GET',
+      url: '/admin/status/all',
+      headers: { 'x-access-token': jwt }
+    })
+    .then(response => {
+      console.log(response.data);
+      stateObj = response.data;
+
+      let tiersList = '';
+      Object.entries(response.data.tiers).forEach(([key, element]) => {
+        tiersList += `<option value="${element.account_tier_id}">${element.name}</option>`;
+      });
+
+      document.getElementById("user-tier").innerHTML = tiersList;
+
+      updateStuff();
+
+      document.getElementById("messages").innerHTML = '';
+      document.getElementById('admin-form').style.display = null;
+    })
+    .catch(error => {
+      console.log(error)
+      document.getElementById("messages").innerHTML = '<p>ADMIN ACCESS DENIED</p><br><a href="/public/login.html">Go to login page</a>';
+    });
+
+    document.getElementById("admin-form").addEventListener("submit", function(event){
+      event.preventDefault();
+      document.getElementById("make-it").disabled = true;
+      document.getElementById("make-it").value = 'Pending...';
+      
+      const email = document.getElementById("user-email").value;
+      const tierKey =  document.getElementById("user-tier").value;
+      const tierPrice = document.getElementById("tier-price").value;
+      const domainKey = document.getElementById("domain-select").value;
+      const subdomain = document.getElementById("user-subdomain").value;
+      const serverKey = document.getElementById("user-server").value;
+
+      axios({
+        method: 'POST',
+        url: '/admin/users/connections/add',
+        headers: { 'x-access-token': jwt },
+        data: {
+          email: email,
+          tierKey: tierKey,
+          tierPrice: tierPrice,
+          domainKey: domainKey,
+          subdomain: subdomain,
+          serverKey: serverKey
+        }
+      })
+      .then(response => {
+        document.getElementById("make-it").disabled = false;
+        document.getElementById("make-it").value = 'Submit';
+
+        document.getElementById("admin-form").reset();
+        iziToast.success({
+          title: 'User Added',
+          position: 'topCenter',
+          timeout: 3500
+        });
+      })
+      .catch(error => {
+        console.log(error)
+        document.getElementById("make-it").disabled = false;
+        document.getElementById("make-it").value = 'Submit';
+        iziToast.error({
+          title: 'Failed To Add User',
+          position: 'topCenter',
+          timeout: 3500
+        });
+      });
+    }, true);
+  </script>
+</body>

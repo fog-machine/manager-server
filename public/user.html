@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <title>User</title>
+  <script src="/public/js/axios.js"></script>
+</head>
+
+<body>
+  <h3>User Panel</h3>
+  <div id="messages">Loading...</div>
+
+  <br><br>
+  <a id="change-server" style="display: none;" href="/public/user-change-server.html">Change RPN Server Location</a>
+  <br><br><br>
+  <a id="change-password" style="display: none;" href="/public/user-change-password.html">Change Password</a>
+  <br>
+  <a id="change-email" style="display: none;" href="/public/user-change-email.html">Change e-mail</a>
+  <br><br>
+  <a id="logout" style="display: none;" href="javascript:logout()">Logout</a>
+
+  <script>
+    function logout() {
+      localStorage.setItem('jwt', false);
+      window.location.href = '/public/login.html';
+    }
+
+    const jwt = localStorage.getItem('jwt');
+
+    axios({
+      method: 'GET',
+      url: '/account/info',
+      headers: { 'x-access-token': jwt }
+    })
+    .then(response => {
+      let text = `<div>e-mail: ${response.data.email}</div><br><div>Domains:</div><ul>`;
+      response.data.domains.forEach(element => {
+        text += `<li>${element.fullDomain}</li>`;
+      });
+      text += '</ul>';
+      
+      document.getElementById("messages").innerHTML = text;
+
+      document.getElementById('change-server').style.display = null;
+      document.getElementById('change-password').style.display = null;
+      document.getElementById('change-email').style.display = null;
+      document.getElementById('logout').style.display = null;
+    })
+    .catch(error => {
+      console.log(error);
+      document.getElementById("messages").innerHTML = 'BAD TOKEN';
+      // window.location.href = '/public/login.html';
+    });
+  </script>
+</body>

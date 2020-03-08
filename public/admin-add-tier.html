@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <title>Tier Management</title>
+  <link rel="stylesheet" href="/public/css/izi-toast.css">
+
+  <script src="/public/js/axios.js"></script>
+  <script src="/public/js/izi-toast.js"></script>
+</head>
+
+<body>
+  <h3>Add Tier</h3>
+  <form style="display: none;" id="admin-form">
+    <label for="tier-name">Tier Name</label><br>
+    <input type="text" name="tier-name" id="tier-name" required>
+    <br><br>
+
+    <label for="tier-price">Tier Price (Integer ex: $5 = 500)</label><br>
+    <input type="number" name="tier-price" id="tier-price" min="0" step="1" required>
+    <br><br>
+    <input type="checkbox" id="is-public" name="is-public" value="bool"><label for="is-public">Is It Public?</label><br>
+    <input type="checkbox" id="is-invite" name="is-invite" value="bool"><label for="is-invite">Does it require invite</label><br>
+    <br><br>
+
+    <input id="make-it" type="submit" value="Submit">
+  </form>
+
+  <br><br>
+  <ul id="tier-list"></ul>
+
+  <br><br>
+  <div id="messages">Loading...</div>
+
+  <script>
+    const jwt = localStorage.getItem('jwt');
+
+    function deleteTier(tierId, tierName) {
+      iziToast.question({
+        timeout: 20000,
+        close: false,
+        overlayClose: true,
+        overlay: true,
+        displayMode: 'once',
+        id: 'question',
+        zindex: 99999,
+        title: "Delete <b>'" + tierName + "'</b>?",
+        position: 'center',
+        buttons: [
+          ['<button><b>Delete</b></button>', (instance, toast) => {
+            instance.hide({ transitionOut: 'fadeOut' }, toast, 'button');
+            axios({
+              method: 'POST',
+              url: '/admin/tiers/delete',
+              headers: { 'x-access-token': jwt },
+              data: { tierId: tierId }
+            })
+            .then(response => {
+              // remove from list
+              const select = document.querySelector(`[data-tier='${tierId}']`).remove();
+              iziToast.success({
+                title: 'Removed Tier',
+                position: 'topCenter',
+                timeout: 3500
+              });
+            })
+            .catch(error => {
+              console.log(error);
+              iziToast.error({
+                title: 'Failed to delete tier',
+                position: 'topCenter',
+                timeout: 3500
+              });
+              document.getElementById("messages").innerHTML = ' Error: Failed to delete tier';
+            });
+          }, true],
+          ['<button>Go Back</button>', (instance, toast) => {
+            instance.hide({ transitionOut: 'fadeOut' }, toast, 'button');
+          }],
+        ]
+      });
+    }
+
+    axios({
+      method: 'GET',
+      url: '/admin/status/tiers',
+      headers: { 'x-access-token': jwt }
+    })
+    .then(response => {
+      let responseList = '';
+      response.data.forEach(element => {
+        responseList += `<li data-tier="${element.account_tier_id}">${element.name} (${element.price}) (pub: ${element.is_public === 1 ? true : false}) (inv: ${element.requires_invite === 1 ? true : false}) [<a href="javascript:deleteTier('${element.account_tier_id}', '${element.name}')">X</a>]</li>`;
+      });
+
+      document.getElementById("tier-list").innerHTML = responseList;
+      document.getElementById("messages").innerHTML = '';
+      document.getElementById('admin-form').style.display = null;
+    })
+    .catch(error => {
+      document.getElementById("messages").innerHTML = '<p>ADMIN ACCESS DENIED</p><br><a href="/public/login.html">Go to login page</a>';
+    });
+
+    document.getElementById("admin-form").addEventListener("submit", function(event){
+      event.preventDefault();
+      document.getElementById("messages").innerHTML = "";
+      document.getElementById("make-it").disabled = true;
+      document.getElementById("make-it").value = 'Pending...';
+      
+      const price = document.getElementById("tier-price").value;
+      const name = document.getElementById("tier-name").value;
+      const isPublic = document.getElementById("is-public").checked;
+      const requiresInvite = document.getElementById("is-invite").checked;
+
+      axios({
+        method: 'POST',
+        url: '/admin/tiers/add',
+        headers: { 'x-access-token': jwt },
+        data: {
+          price: price,
+          name: name,
+          isPublic: isPublic,
+          requiresInvite: requiresInvite
+        }
+      })
+      .then(response => {
+        document.getElementById("make-it").disabled = false;
+        document.getElementById("make-it").value = 'Submit';
+        document.getElementById("messages").innerHTML = 'Tier Added';
+        // Append the text to <li>
+        document.getElementById("tier-list").innerHTML += `<li data-tier="${response.data.account_tier_id}">${name} (${price}) (pub: ${isPublic}) (inv: ${requiresInvite}) [<a href="javascript:deleteTier('${response.data.account_tier_id}', '${name}')">X</a>]</li>`;
+
+        document.getElementById("admin-form").reset();
+      })
+      .catch(error => {
+        console.log(error)
+        document.getElementById("make-it").disabled = false;
+        document.getElementById("make-it").value = 'Submit';
+        let errText = 'unknown error';
+        if (error.response && error.response.data.error) {
+          errText = error.response.data.error;
+        }
+        document.getElementById("messages").innerHTML = ' Error: ' + errText;
+      });
+    }, true);
+  </script>
+</body>

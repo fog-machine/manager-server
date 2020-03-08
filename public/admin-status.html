@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <title>Admin Status</title>
+  <script src="/public/js/axios.js"></script>
+</head>
+
+<body>
+  <h3>Status Page</h3>
+  <br>
+  <div id="messages">Loading...</div>
+
+  <script>
+    const jwt = localStorage.getItem('jwt');
+
+    axios({
+      method: 'GET',
+      url: '/admin/status/all',
+      headers: { 'x-access-token': jwt }
+    })
+    .then(response => {
+      console.log(response);
+      const responseOutput = `<pre>${JSON.stringify(response.data, null, 2)}</pre>`;
+      document.getElementById("messages").innerHTML = responseOutput;
+    })
+    .catch(error => {
+      document.getElementById("messages").innerHTML = '<p>ADMIN ACCESS DENIED</p><br><a href="/public/login.html">Go to login page</a>';
+    });
+  </script>
+</body>

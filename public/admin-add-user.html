@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <title>Add User</title>
+  <link rel="stylesheet" href="/public/css/izi-toast.css">
+
+  <script src="/public/js/axios.js"></script>
+  <script src="/public/js/izi-toast.js"></script>
+</head>
+
+<body>
+  <h3>Add User</h3>
+  <form style="display: none;" id="admin-form">
+    <label for="user-email">User e-mail</label><br>
+    <input type="text" name="user-email" id="user-email" required>
+    <br><br>
+
+    <label for="user-password">Password</label><br>
+    <input type="text" name="user-password" id="user-password" required>
+    <br><br>
+
+    <input id="make-it" type="submit" value="Submit">
+  </form>
+
+  <br><br>
+  <ul id="user-list"></ul>
+
+  <br><br>
+  <div id="messages">Loading...</div>
+
+  <script>
+    const jwt = localStorage.getItem('jwt');
+
+    function deleteUser(userId, userEmail) {
+      iziToast.question({
+        timeout: 20000,
+        close: false,
+        overlayClose: true,
+        overlay: true,
+        displayMode: 'once',
+        id: 'question',
+        zindex: 99999,
+        title: `Delete <b>${userEmail}</b>?`,
+        position: 'center',
+        buttons: [
+          ['<button><b>Delete</b></button>', (instance, toast) => {
+            instance.hide({ transitionOut: 'fadeOut' }, toast, 'button');
+            axios({
+              method: 'POST',
+              url: '/admin/users/delete',
+              headers: { 'x-access-token': jwt },
+              data: { userId: userId }
+            })
+            .then(response => {
+              // remove from list
+              document.querySelector(`[data-user='${userId}']`).remove();
+              iziToast.success({
+                title: 'Removed User',
+                position: 'topCenter',
+                timeout: 3500
+              });
+            })
+            .catch(error => {
+              console.log(error)
+              iziToast.error({
+                title: 'Failed to delete user',
+                position: 'topCenter',
+                timeout: 3500
+              });
+              document.getElementById("messages").innerHTML = ' Error: Failed to delete user';
+            });
+          }, true],
+          ['<button>Go Back</button>', (instance, toast) => {
+            instance.hide({ transitionOut: 'fadeOut' }, toast, 'button');
+          }],
+        ]
+      });
+    }
+
+    function deleteConnection(connectionId, domain) {
+      iziToast.question({
+        timeout: 20000,
+        close: false,
+        overlayClose: true,
+        overlay: true,
+        displayMode: 'once',
+        id: 'question',
+        zindex: 99999,
+        title: `Delete <b>${domain}</b>?`,
+        position: 'center',
+        buttons: [
+          ['<button><b>Delete</b></button>', (instance, toast) => {
+            instance.hide({ transitionOut: 'fadeOut' }, toast, 'button');
+            axios({
+              method: 'POST',
+              url: '/admin/users/connections/delete',
+              headers: { 'x-access-token': jwt },
+              data: { connectionId: connectionId }
+            })
+            .then(response => {
+              // remove from list
+              document.querySelector(`[data-connection='${connectionId}']`).remove();
+              iziToast.success({
+                title: 'Removed Connection',
+                position: 'topCenter',
+                timeout: 3500
+              });
+            })
+            .catch(error => {
+              console.log(error)
+              iziToast.error({
+                title: 'Failed to delete connection',
+                position: 'topCenter',
+                timeout: 3500
+              });
+              document.getElementById("messages").innerHTML = ' Error: Failed to delete connection';
+            });
+          }, true],
+          ['<button>Go Back</button>', (instance, toast) => {
+            instance.hide({ transitionOut: 'fadeOut' }, toast, 'button');
+          }],
+        ]
+      });
+    }
+
+    axios({
+      method: 'GET',
+      url: '/admin/status/users',
+      headers: { 'x-access-token': jwt }
+    })
+    .then(response => {
+      let responseList = '';
+      Object.entries(response.data).forEach(([key, element]) => {
+        responseList += `<li data-user="${element.user_id}">${element.email}  [<a href="/public/admin-user-connect.html?email=${element.email}">Add Connection</a>][<a href="javascript:deleteUser('${element.user_id}', '${element.email}')">X</a>]<ul>`;
+        element.domains.forEach(domainEl => {
+          responseList += `<li data-connection="${domainEl.user_domain_id}">${domainEl.full_domain} [<a href="javascript:deleteConnection('${domainEl.user_domain_id}', '${domainEl.full_domain}')">X</a>]</li>`;
+        });
+        responseList += '</ul></li>'
+      });
+
+      document.getElementById("user-list").innerHTML = responseList;
+      document.getElementById("messages").innerHTML = '';
+      document.getElementById('admin-form').style.display = null;
+    })
+    .catch(error => {
+      console.log(error)
+      document.getElementById("messages").innerHTML = '<p>ADMIN ACCESS DENIED</p><br><a href="/public/login.html">Go to login page</a>';
+    });
+
+    document.getElementById("admin-form").addEventListener("submit", function(event){
+      event.preventDefault();
+      document.getElementById("messages").innerHTML = "";
+      document.getElementById("make-it").disabled = true;
+      document.getElementById("make-it").value = 'Pending...';
+      
+      let userEmail = document.getElementById("user-email").value;
+      let userPassword = document.getElementById("user-password").value;
+
+      axios({
+        method: 'POST',
+        url: '/admin/users/add',
+        headers: { 'x-access-token': jwt },
+        data: {
+          email: userEmail,
+          password: userPassword
+        }
+      })
+      .then(response => {
+        document.getElementById("make-it").disabled = false;
+        document.getElementById("make-it").value = 'Submit';
+        document.getElementById("messages").innerHTML = 'User Added';
+        // Append the text to <li>
+        document.getElementById("user-list").innerHTML += `<li data-user="${response.data.user_id}">${userEmail} [<a href="/public/admin-user-connect.html?email=${userEmail}">Add Connection</a>][<a href="javascript:deleteUser('${response.data.user_id}', '${userEmail}')">X</a>]</li>`;
+
+        document.getElementById("admin-form").reset();
+      })
+      .catch(error => {
+        console.log(error)
+        document.getElementById("make-it").disabled = false;
+        document.getElementById("make-it").value = 'Submit';
+        let errText = 'unknown error';
+        if (error.response.data.error) {
+          errText = error.response.data.error;
+        }
+        document.getElementById("messages").innerHTML = ' Error: ' + errText;
+      });
+    }, true);
+  </script>
+</body>

@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <title>Server Panel</title>
+  <link rel="stylesheet" href="/public/css/izi-toast.css">
+
+  <script src="/public/js/axios.js"></script>
+  <script src="/public/js/izi-toast.js"></script>
+</head>
+
+<body>
+  <h3>Lookup Server</h3>
+  <form style="display: none;" id="admin-form">
+    <label for="server-id">Server ID</label><br>
+    <input type="text" name="server-id" id="server-id" required>
+    <br><br>
+
+    <input id="make-it" type="submit" value="Submit">
+  </form>
+
+  <br><br>
+  <div id="messages">Loading...</div>
+
+  <script>
+    const jwt = localStorage.getItem('jwt');
+    let stateObj;
+
+    const urlParams = new URLSearchParams(window.location.search);
+    // get the required parameter
+    const param = urlParams.get('server-id');
+    console.log(param)
+    if (param) {
+      document.getElementById("server-id").value = param;
+    }
+
+    function submitEvent() {
+      document.getElementById("make-it").disabled = true;
+      document.getElementById("make-it").value = 'Pending...';
+      
+      const serverId = document.getElementById("server-id").value;
+
+      axios({
+        method: 'POST',
+        url: '/admin/servers/get-data',
+        headers: { 'x-access-token': jwt },
+        data: {
+          serverId: serverId
+        }
+      })
+      .then(response => {
+        document.getElementById("make-it").disabled = false;
+        document.getElementById("make-it").value = 'Submit';
+
+        const responseOutput = `<pre>${JSON.stringify(response.data, null, 2)}</pre>`;
+        document.getElementById('messages').innerHTML = responseOutput;
+      })
+      .catch(error => {
+        console.log(error)
+        document.getElementById("make-it").disabled = false;
+        document.getElementById("make-it").value = 'Submit';
+        iziToast.error({
+          title: 'Failed to call server',
+          position: 'topCenter',
+          timeout: 3500
+        });
+      });
+    }
+
+    document.getElementById("admin-form").addEventListener("submit", function(event){
+      event.preventDefault();
+      submitEvent();
+    }, true);
+
+
+    axios({
+      method: 'GET',
+      url: '/admin/status/all',
+      headers: { 'x-access-token': jwt }
+    })
+    .then(response => {
+      document.getElementById("messages").innerHTML = '';
+      document.getElementById('admin-form').style.display = null;
+
+      if (document.getElementById("server-id").value.length > 0) {
+        submitEvent();
+      }
+    })
+    .catch(error => {
+      console.log(error)
+      document.getElementById("messages").innerHTML = '<p>ADMIN ACCESS DENIED</p><br><a href="/public/login.html">Go to login page</a>';
+    });
+  </script>
+</body>

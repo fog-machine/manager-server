@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <title>User</title>
+  <script src="/public/js/axios.js"></script>
+</head>
+
+<body>
+  <a href="/public/user.html">Go Back To User Page</a>
+  <h3>Change E-mail Form</h3>
+
+  <form style="display: none;" id="change-email">
+    <label for="new-email">New e-mail</label><br>
+    <input id="new-email" name="new-email" type="text" required>
+    <br><br>
+
+    <label for="password">Password</label><br>
+    <input id="password" name="password" type="password" required>
+    <br><br>
+
+    <input id="submit-it" type="submit" value="Submit">
+  </form>
+
+  <br><br>
+  <div id="messages">Loading...</div>
+
+  <script>
+    const jwt = localStorage.getItem('jwt');
+
+    axios({
+      method: 'GET',
+      url: '/ping',
+      headers: { 'x-access-token': jwt }
+    })
+    .then(response => {
+      document.getElementById("messages").innerHTML = '';
+      document.getElementById('change-email').style.display = null;
+    })
+    .catch(error => {
+      document.getElementById("messages").innerHTML = 'BAD TOKEN';
+      window.location.href = '/public/login.html';
+    });
+
+    document.getElementById("change-email").addEventListener("submit", function(event){
+      event.preventDefault();
+
+      document.getElementById("messages").innerHTML = "";
+      document.getElementById("submit-it").disabled = true;
+      document.getElementById("submit-it").value = 'Pending...';
+
+      axios({
+        method: 'POST',
+        url: '/account/change-email',
+        headers: { 'x-access-token': jwt },
+        data: {
+          newEmail: document.getElementById("new-email").value,
+          password: document.getElementById("password").value
+        }
+      })
+      .then(response => {
+        document.getElementById("submit-it").value = 'Success!';
+        document.getElementById("messages").innerHTML = 'E-mail Updated!';
+      })
+      .catch(error => {
+        document.getElementById("submit-it").disabled = false;
+        document.getElementById("submit-it").value = 'Submit';
+        document.getElementById("messages").innerHTML = error.response.data.error;
+      });
+    }, true);
+  </script>
+</body>

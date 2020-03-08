@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <title>Server Regions</title>
+  <link rel="stylesheet" href="/public/css/izi-toast.css">
+
+  <script src="/public/js/axios.js"></script>
+  <script src="/public/js/izi-toast.js"></script>
+</head>
+
+<body>
+  <h3>Add RPN Server Region</h3>
+  <form style="display: none;" id="admin-form">
+    <label for="region-code">Region Code</label><br>
+    <input type="text" name="region-name" id="region-name" required>
+    <br><br>
+
+    <label for="region-code">Region Name</label><br>
+    <input type="text" name="region-code" id="region-code" required>
+    <br><br>
+
+    <input id="make-it" type="submit" value="Submit">
+  </form>
+
+  <br><br>
+  <ul id="server-region-list"></ul>
+
+  <br><br>
+  <div id="messages">Loading...</div>
+
+  <script>
+    const jwt = localStorage.getItem('jwt');
+
+    function deleteRegion(code) {
+      iziToast.question({
+        timeout: 20000,
+        close: false,
+        overlayClose: true,
+        overlay: true,
+        displayMode: 'once',
+        id: 'question',
+        zindex: 99999,
+        title: "Delete <b>'" + code + "'</b>?",
+        position: 'center',
+        buttons: [
+          ['<button><b>Delete</b></button>', (instance, toast) => {
+            instance.hide({ transitionOut: 'fadeOut' }, toast, 'button');
+            axios({
+              method: 'POST',
+              url: '/admin/server-regions/delete',
+              headers: { 'x-access-token': jwt },
+              data: { regionCode: code }
+            })
+            .then(response => {
+              // remove from list
+              const select = document.querySelector(`[data-region='${code}']`).remove();
+              iziToast.success({
+                title: 'Removed Server Region',
+                position: 'topCenter',
+                timeout: 3500
+              });
+            })
+            .catch(error => {
+              console.log(error)
+              iziToast.error({
+                title: 'Failed to delete server region',
+                position: 'topCenter',
+                timeout: 3500
+              });
+              document.getElementById("messages").innerHTML = ' Error: Failed to delete server region';
+            });
+          }, true],
+          ['<button>Go Back</button>', (instance, toast) => {
+            instance.hide({ transitionOut: 'fadeOut' }, toast, 'button');
+          }],
+        ]
+      });
+      console.log(code);
+    }
+
+    axios({
+      method: 'GET',
+      url: '/admin/status/server-regions',
+      headers: { 'x-access-token': jwt }
+    })
+    .then(response => {
+      let responseList = '';
+      response.data.forEach(element => {
+        responseList += `<li data-region="${element.region_code}">${element.region_name} (${element.region_code}) [<a href="javascript:deleteRegion('${element.region_code}')">X</a>]</li>`;
+      });
+
+      document.getElementById("server-region-list").innerHTML = responseList;
+      document.getElementById("messages").innerHTML = '';
+      document.getElementById('admin-form').style.display = null;
+    })
+    .catch(error => {
+      document.getElementById("messages").innerHTML = '<p>ADMIN ACCESS DENIED</p><br><a href="/public/login.html">Go to login page</a>';
+    });
+
+    document.getElementById("admin-form").addEventListener("submit", function(event){
+      event.preventDefault();
+      document.getElementById("messages").innerHTML = "";
+      document.getElementById("make-it").disabled = true;
+      document.getElementById("make-it").value = 'Pending...';
+      
+      let regionName = document.getElementById("region-code").value;
+      let regionCode = document.getElementById("region-name").value;
+
+      axios({
+        method: 'POST',
+        url: '/admin/server-regions/add',
+        headers: { 'x-access-token': jwt },
+        data: {
+          regionCode: regionCode,
+          regionName: regionName
+        }
+      })
+      .then(response => {
+        document.getElementById("make-it").disabled = false;
+        document.getElementById("make-it").value = 'Submit';
+        document.getElementById("messages").innerHTML = 'Region Added';
+        // Append the text to <li>
+        document.getElementById("server-region-list").innerHTML += `<li data-region="${regionCode}">${regionName} (${regionCode}) [<a href="javascript:deleteRegion('${regionCode}')">X</a>]</li>`;
+
+        document.getElementById("admin-form").reset();
+      })
+      .catch(error => {
+        console.log(error)
+        document.getElementById("make-it").disabled = false;
+        document.getElementById("make-it").value = 'Submit';
+        let errText = 'unknown error';
+        if (error.response.data.error) {
+          errText = error.response.data.error;
+        }
+        document.getElementById("messages").innerHTML = ' Error: ' + errText;
+      });
+    }, true);
+  </script>
+</body>

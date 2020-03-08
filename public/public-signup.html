@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <title>Sign Up</title>
+  <link rel="stylesheet" href="/public/css/izi-toast.css">
+
+  <script src="/public/js/axios.js"></script>
+  <script src="/public/js/izi-toast.js"></script>
+</head>
+
+<body>
+  <h3>Sign Up</h3>
+  <form id="admin-form">
+    <label for="email">email</label><br>
+    <input type="email" name="email" id="email" required>
+    <br><br>
+
+    <label for="password">password</label><br>
+    <input type="password" name="password" id="password" required>
+    <br><br>
+
+    <label for="tier-id">Tier ID</label><br>
+    <input type="text" name="tier-id" id="tier-id" required>
+    <br><br>
+
+    <label for="subdomain">Sub Domain</label><br>
+    <input type="text" name="subdomain" id="subdomain" required>
+    <br><br>
+
+    <label for="domain-id">Domain ID</label><br>
+    <input type="text" name="domain-id" id="domain-id" required>
+    <br><br>
+
+    <label for="region-id">Server Region</label><br>
+    <input type="text" name="region-id" id="region-id" required>
+    <br><br>
+
+    <label for="invite-code">Invite Code</label><br>
+    <textarea rows="4" cols="40" name="invite-code" id="invite-code"></textarea>
+    <br><br>
+
+    <input id="make-it" type="submit" value="Submit">
+  </form>
+
+  <script>
+    const jwt = localStorage.getItem('jwt');
+
+    document.getElementById("admin-form").addEventListener("submit", function(event){
+      event.preventDefault();
+      document.getElementById("make-it").disabled = true;
+      document.getElementById("make-it").value = 'Pending...';
+      
+      axios({
+        method: 'POST',
+        url: '/sign-up',
+        headers: { 'x-access-token': jwt },
+        data: {
+          email: document.getElementById("email").value,
+          password: document.getElementById("password").value,
+          tierId: document.getElementById("tier-id").value,
+          subdomain: document.getElementById("subdomain").value,
+          domainKey: document.getElementById("domain-id").value,
+          inviteCode: document.getElementById("invite-code").value,
+          serverRegion: document.getElementById("region-id").value
+        }
+      })
+      .then(response => {
+        document.getElementById("make-it").disabled = false;
+        document.getElementById("make-it").value = 'Submit';
+        iziToast.success({
+          title: 'User Registered',
+          position: 'topCenter',
+          timeout: 3500
+        });
+
+        // document.getElementById("admin-form").reset();
+      })
+      .catch(error => {
+        console.log(error);
+        document.getElementById("make-it").disabled = false;
+        document.getElementById("make-it").value = 'Submit';
+        let errText = 'unknown error';
+        if (error.response && error.response.data.error) {
+          errText = error.response.data.error;
+        }
+
+        iziToast.error({
+          title: `Error: ${errText}`,
+          position: 'topCenter',
+          timeout: 3500
+        });
+      });
+    }, true);
+  </script>
+</body>
