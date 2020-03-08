@@ -114,3 +114,9 @@ pm2 save
 
 # # Restart NGINX
 # service nginx restart
+
+
+# Add An Admin User
+cd manager-server
+tput reset
+node add-admin-user.js
