@@ -12,12 +12,12 @@ const schema = Joi.object().keys({
   port: Joi.number().port().required(),
   dbPath: Joi.string().default(path.join(process.cwd(), 'rpn.db')),
   email: Joi.object().keys({
-    port: Joi.number().port().default(1025),
-    host: Joi.string().ip().default('127.0.0.1'),
-    user: Joi.string(),
-    password: Joi.string(),
-    passwordResetUrl: Joi.string(),
-  }),
+    port: Joi.number().port().required(),
+    host: Joi.string().ip().required(),
+    user: Joi.string().allow("").required(),
+    password: Joi.string().allow("").required(),
+    passwordResetUrl: Joi.string().allow("").required(),
+  }).optional(),
   dynu: Joi.object().keys({
     clientId: Joi.string().required(),
     secret: Joi.string().required(),

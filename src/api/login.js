@@ -28,6 +28,8 @@ exports.setup = (program, express) => {
   express.post('/change-password-request', (req, res) => {
     if (!req.body.email) { return res.status(500).json({ error: 'Invalid Parameters' }); }
 
+    if (!program.email) { return res.status(500).json({ error: 'Email not configured for this server' }); }
+
     db.get(`SELECT * FROM users WHERE email = ?`, [req.body.email], (err, row) => {
       if (err || !row) { return res.status(500).json({ error: 'Invalid Parameters' }); }
       
