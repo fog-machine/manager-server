@@ -1,16 +1,18 @@
 ## Fog Machine Manager Server
 
-The manager server handles a few different tasks
+The manager server does the following:
+- Handles user accounts
+- Coordinates tunnel servers
+- Provides an API for apps to connect to
+- Manages DNS records
 
-* User system.  There is a simple sign up API that can be invite only
-* Users can have any number of tunnels
-* Admin API
-* Admin API and web UI to 
-* Manager server can sort servers by tiers.  
+## Dynu DDNS
+
+The manager server is responsible for modifying DNS records
 
 ## Install
 
-Install script is in `/bash/install.sh`
+The install script is in `/bash/install.sh`
 
 The install script has a portion at the bottom commented out.  The commented out code sets up the SSL certificates for the server using a DNS verification method.
 
@@ -26,33 +28,19 @@ To setup a new server from scratch, follow these steps:
     - `pm2 list all` and `pm2 logs` to make sure the server is running
     - check of nginx config files
     - check `crontab -l` to make sure acme.sh add a certificate renewal job
-
+- modify the config file `./config/config.json`
+    - Change the secret key
+    - Add in credentials for DynuDNS
 
 ## Admin User
 
-The install script will create an admin user for you and print the username and password out to the terminal.
+The install script will create an admin user for you and print the username and password out to the terminal at the end of the install script.  Save the password, because it will be gone once the terminal is cleared.
 
+You will need an admin user to configure the manager server.
 
+## Go To Web UI
 
-
-## Setup Structure
-
-The concepts (in order):
-
-* users
-* tunnels (part 1)
-* domain
-* tier
-* domain <--> tier
-* server region
-* tunnel server
-* tunnel server <--> region
-* tunnel server <--> domain
-* tunnel server <--> tier
-* tunnels (part 2)
-* user signup process
-
-A manger is very flexible, but you will need to do some manual configuration.  This entire process can be done through the admin panel in the Web UI.
+The Web UI has all the tools you need to finish configuring the manager server.  
 
 #### users
 
