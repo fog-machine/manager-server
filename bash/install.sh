@@ -3,7 +3,7 @@
 tput reset
 
 echo
-echo Welcome to the RPN Server Install Script
+echo 'Welcome to the RPN Server Install Script'
 echo
 echo 'Press any key to continue'
 read 
